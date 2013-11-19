@@ -1,11 +1,11 @@
-AppFirst's Poll-aroid
-=====================
+AppFirst's Poller 
+=================
 
-A module for pulling snapshots of data from RESTful services into the AF Data stream
+A python poller for scraping RESTful services for inclusion into the AppFirst data stream. 
 
 This module is designed to allow a simpler configuration for service consumption by enabling the build of plugins and configuration files for various RESTful services. The initial release of this module supports AWS Cloudwatch and AppDynamics. 
 
-Properly configured, this script will run with the periodicity as set in the Administration panel (or you can utilize crontab), and will provide these metrics to StatsD widgets across the product.
+Properly configured, this script will run with the periodicity as set in the Administration panel (or you can utilize crontab), and will provide these metrics under StatsD widgets across the product.
 
 *Dependencies*
 * Recommended install path: `/usr/share/appfirst/plugins/libexec/`
