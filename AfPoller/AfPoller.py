@@ -147,11 +147,14 @@ def main():
             Statsd = None
 
         plugin.poll()
+        # Need to add connection checking here, pulling data on a failed
+        #  connection will generate a critical - response code and friendlier
+        #  output is expected
         data = plugin.metric_data
         for (statsd_key,value) in data.get('metrics',{}).iteritems():
             LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
             if not options.dryrun:
-                Statsd.gauge("%s.%s" % (options.appname,statsd_key),value)
+                Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
