@@ -14,6 +14,7 @@ from codecs import open
 from optparse import OptionParser
 from plugins.appdynamics import AppDynamics
 from plugins.cloudwatch import CloudWatch
+from plugins.newrelic import NewRelic
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +74,10 @@ def main():
         parser.add_option('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
         parser.add_option('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
         parser.add_option('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+
+        parser.add_option('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
+        parser.add_option('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="application ID to get metrics from New Relic")
+
         # parser.add_option('-h','--help', dest='help', action='help')
         no_args_flag = True if len(sys.argv[1:]) == 0 else False
         
@@ -132,6 +137,23 @@ def main():
                                 unit=options.unit,
                                 offset=options.offset)
 
+        elif options.plugin.lower() == "newrelic":
+
+            if (not options.nrelic_key) and (not options.nrelic_app_id):
+                parser.error("You must provide New Relic API key and application ID")
+
+            if (not options.metricpath):
+                parser.error("You must provide metric path")
+
+            if not options.appname:
+                parser.error("You must provide an Application Name")
+
+
+            plugin = NewRelic(key=options.nrelic_key,
+                            app_id=options.nrelic_app_id,
+                            metricpath=options.metricpath
+                        )
+
         else:
             parser.print_help()
             exit()
@@ -150,11 +172,15 @@ def main():
         # Need to add connection checking here, pulling data on a failed
         #  connection will generate a critical - response code and friendlier
         #  output is expected
+        LOGGER.debug("plugin poll done")
         data = plugin.metric_data
-        for (statsd_key,value) in data.get('metrics',{}).iteritems():
-            LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
-            if not options.dryrun:
-                Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
+        if data is None:
+            raise Exception("No metric data recived from plugin")
+        else:
+            for (statsd_key,value) in data.get('metrics',{}).iteritems():
+                LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
+                if not options.dryrun:
+                    Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
