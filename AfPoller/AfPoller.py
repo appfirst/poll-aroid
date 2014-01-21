@@ -10,6 +10,7 @@ Pluggable framework for polling for, collecting metrics and posting metrics to A
 import sys
 import json
 import logging
+import os
 from codecs import open
 from optparse import OptionParser
 from plugins.appdynamics import AppDynamics
@@ -26,15 +27,28 @@ def get_json_from_file(file_name):
 
 
 def setup_logger(options):
-    LOGGER.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.base_plugin")
-    component_logger.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.appdynamics")
-    component_logger.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.cloudwatch")
-    component_logger.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.newrelic")
-    component_logger.setLevel(options.verbose)
+    if options.verbose and options.log_to_file:
+        filename = os.path.dirname(os.path.realpath(__file__)) + '/af-poller.log'
+        fh = logging.FileHandler(filename, mode='a', encoding=None, delay=False)
+
+    logger_components = [LOGGER]
+    logger_components.append(logging.getLogger(name="plugins.base_plugin"))
+    logger_components.append(logging.getLogger(name="plugins.appdynamics"))
+    logger_components.append(logging.getLogger(name="plugins.cloudwatch"))
+    logger_components.append(logging.getLogger(name="plugins.newrelic"))
+
+
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    for l in logger_components:
+        l.setLevel(options.verbose)
+        l.addHandler(ch)
+        if fh:
+            l.addHandler(fh)
+
+
+
     component_logger = logging.getLogger(name="requests.packages.urllib3.connectionpool")
     component_logger.setLevel(logging.WARN)
 
@@ -75,6 +89,7 @@ def main():
         parser.add_option('-d','--dry-run',dest='dryrun', action='store_true',default=False,help="Get metric value but do not send to AppFirst, print results to console")
         parser.add_option('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
         parser.add_option('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+        parser.add_option('-f','--log-to-file', dest='log_to_file', help="Store output log to file")
         parser.add_option('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
 
         parser.add_option('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
