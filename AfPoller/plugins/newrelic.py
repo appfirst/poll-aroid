@@ -6,9 +6,9 @@ NewRelic
 '''
 import logging
 import time
+
 from time import gmtime, strftime
-from datetime import datetime, timedelta
-from urllib import quote_plus
+from datetime import datetime
 from base_plugin import RESTAPINotAuthPlugin, Plugin
 
 LOGGER = logging.getLogger(__name__)
@@ -67,19 +67,22 @@ class NewRelic(RESTAPINotAuthPlugin):
         statsd_data = []
 
         if (data['metric_data'] and data['metric_data']['metrics']):
-            print (u'metrics from date %s' %data['metric_data']['from'])
+            LOGGER.debug (u'metrics from date %s' %data['metric_data']['from'])
             for chunk in data['metric_data']['metrics']:
                 LOGGER.debug(u'metrics found for %s' %chunk['name'])
                 if (chunk['timeslices']):
                     for metric in chunk['timeslices']:
-                        print(metric['values'])
+                        LOGGER.debug(metric['values'])
                         statsd_data.append(metric['values'])
 
         else:
             raise Exception('no metrics found in response')
 
+        if self.metric_data:
+            LOGGER.debug(u' previous metric found %s' % (data['metric_data']['from']))
+
         self.metric_data = {'metrics' : {}}
-        m = Plugin.reformat_metric_name(chunk['name'])
+
         if len(statsd_data) > 0:
             last_metric = statsd_data[-1]
             mname = self.metricpath.replace('/', '.')

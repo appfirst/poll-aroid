@@ -35,7 +35,7 @@ class Plugin(object):
     def __init__(self):
         self.current_data = None
         self.metric_data = None
-        self.pref_file_name = 'pref.json'
+        self.pref_file_name = os.path.dirname(os.path.realpath(__file__)) + '/pref.json'
         self.pref = {}
 
     def add_metrics(self, data):
@@ -44,7 +44,7 @@ class Plugin(object):
     @staticmethod
     def load_json_from_file(self, filename):
         data = {}
-        if os.path.isfile(filename): 
+        if os.path.isfile(filename):
             json_data = open(filename)
             if (json_data):
                 data = json.load(json_data)
@@ -238,7 +238,7 @@ class RESTAPINotAuthPlugin(Plugin):
         if last_sync:
             LOGGER.debug('last sync found ' + last_sync)
             payload['from'] = last_sync
-        
+
         # @TODO "2014-01-16T13:27:00+00:00",
 
         LOGGER.debug('metricpath ' + self.metricpath)
