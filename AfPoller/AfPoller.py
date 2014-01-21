@@ -33,6 +33,8 @@ def setup_logger(options):
     component_logger.setLevel(options.verbose)
     component_logger = logging.getLogger(name="plugins.cloudwatch")
     component_logger.setLevel(options.verbose)
+    component_logger = logging.getLogger(name="plugins.newrelic")
+    component_logger.setLevel(options.verbose)
     component_logger = logging.getLogger(name="requests.packages.urllib3.connectionpool")
     component_logger.setLevel(logging.WARN)
 
