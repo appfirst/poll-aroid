@@ -14,7 +14,7 @@ accessAppId=""
 
 ## Application Name
 ## Name metrics are sorted with in statsd buckets
-appName=
+appName=""
 
 
 ## From "Applications > Metric Names copy metric name"

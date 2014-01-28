@@ -27,9 +27,16 @@ def get_json_from_file(file_name):
 
 
 def setup_logger(options):
+
+    ch = logging.StreamHandler()
+    fh = None
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
     if options.verbose and options.log_to_file:
         filename = os.path.dirname(os.path.realpath(__file__)) + '/af-poller.log'
         fh = logging.FileHandler(filename, mode='a', encoding=None, delay=False)
+        fh.setFormatter(formatter)
 
     logger_components = [LOGGER]
     logger_components.append(logging.getLogger(name="plugins.base_plugin"))
@@ -38,9 +45,6 @@ def setup_logger(options):
     logger_components.append(logging.getLogger(name="plugins.newrelic"))
 
 
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
     for l in logger_components:
         l.setLevel(options.verbose)
         l.addHandler(ch)
