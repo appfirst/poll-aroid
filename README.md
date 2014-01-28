@@ -52,6 +52,21 @@ AWS CloudWatch
 Included is a check_cloudwatch.sh script which iterates through various metrics and provides the data to statsd. It is recommended to rename this script and employ it for each namespace you are collecting metrics from, and is provided as an alternative to adding the full path and commandline to the polled data script.
 It also outputs a nagios-plugin friendly OK so that the script call can be seen in the polled-data window of the workbench to verify the script was called.
 
+New Relic
+-----------
+`python AfPoller.py --plugin=newrelic`
+
+## New Relic Options
+ `--newrelic-access-key-id <key>` - API key provided by New Relic https://rpm.newrelic.com/accounts/*acc-id*/integrations?page=data_sharing
+ `--newrelic-access-app-id <app_id>` - application ID to get metrics from https://rpm.newrelic.com/api/explore/applications/list
+
+From the metric browser, using 'Copy Full Path':
+ `-m <metric path>` - from the metric browser (ie, "Business Transaction Performance|Business Transactions|<instance>|/my.aspx/results|Calls per Minute)
+ `-a <application>` - Application to define on AppFirst's portal
+
+
+
+
 Upcoming Changes
 ----------------
  * Ability to use configuration files

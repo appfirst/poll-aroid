@@ -4,6 +4,8 @@ base
 """
 import logging
 import requests
+import json
+import os.path
 from requests.auth import HTTPBasicAuth
 from urllib import urlencode
 from urllib import quote
@@ -33,9 +35,31 @@ class Plugin(object):
     def __init__(self):
         self.current_data = None
         self.metric_data = None
+        self.pref_file_name = os.path.dirname(os.path.realpath(__file__)) + '/pref.json'
+        self.pref = {}
 
-    def add_metrics(self,data):
+    def add_metrics(self, data):
         raise Exception("Must override this method")
+
+    @staticmethod
+    def load_json_from_file(self, filename):
+        data = {}
+        if os.path.isfile(filename):
+            json_data = open(filename)
+            if (json_data):
+                data = json.load(json_data)
+        else:
+            self.save_pref()
+        return data
+
+    def get_pref(self):
+        self.pref = self.load_json_from_file(self, self.pref_file_name)
+
+        return self.pref
+
+    def save_pref(self):
+        with open(self.pref_file_name, 'w') as outfile:
+            json.dump(self.pref, outfile)
 
 
 
@@ -187,3 +211,56 @@ class JSONStatsPlugin(RESTAPIPlugin):
         if data:
             self.add_metrics(data)
         #self.finish()
+
+class RESTAPINotAuthPlugin(Plugin):
+    """Extend the Plugin class overriding poll for targets that provide data
+    via HTTP protocol.
+
+    """
+
+    def __init__(self, key, app_id, metricpath, data=None):
+        super(RESTAPINotAuthPlugin, self).__init__()
+        self.key = key
+        self.app_id = app_id
+        self.metricpath = metricpath
+        self.url = self.default_url(app_id);
+
+
+    def get_data(self):
+        """
+        Get a response from a url with a key in header
+        """
+
+        last_sync = self.last_sync()
+        payload = {'names': self.metricpath}
+        headers = {'X-Api-Key': self.key}
+
+        if last_sync:
+            LOGGER.debug('last sync found ' + last_sync)
+            payload['from'] = last_sync
+
+        # @TODO "2014-01-16T13:27:00+00:00",
+
+        LOGGER.debug('metricpath ' + self.metricpath)
+        try:
+            response = requests.get(self.url, params=payload, headers=headers)
+            LOGGER.debug('sending headers ' + response.url)
+            if (response.status_code != 200):
+                raise Exception(u"response code: %s from url %s" % (response.status_code, response.url))
+
+            self.last_sync(update=1)
+
+        except Exception as e:
+            raise e
+
+        return response.json() if response else {}
+
+
+    def poll(self):
+        """Poll data source to get metrics"""
+        data = self.get_data()
+        if data:
+            LOGGER.debug('adding metric')
+            self.add_metrics(data)
+
+

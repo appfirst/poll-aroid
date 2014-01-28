@@ -10,10 +10,12 @@ Pluggable framework for polling for, collecting metrics and posting metrics to A
 import sys
 import json
 import logging
+import os
 from codecs import open
 from optparse import OptionParser
 from plugins.appdynamics import AppDynamics
 from plugins.cloudwatch import CloudWatch
+from plugins.newrelic import NewRelic
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,13 +27,32 @@ def get_json_from_file(file_name):
 
 
 def setup_logger(options):
-    LOGGER.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.base_plugin")
-    component_logger.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.appdynamics")
-    component_logger.setLevel(options.verbose)
-    component_logger = logging.getLogger(name="plugins.cloudwatch")
-    component_logger.setLevel(options.verbose)
+
+    ch = logging.StreamHandler()
+    fh = None
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
+    if options.verbose and options.log_to_file:
+        filename = os.path.dirname(os.path.realpath(__file__)) + '/af-poller.log'
+        fh = logging.FileHandler(filename, mode='a', encoding=None, delay=False)
+        fh.setFormatter(formatter)
+
+    logger_components = [LOGGER]
+    logger_components.append(logging.getLogger(name="plugins.base_plugin"))
+    logger_components.append(logging.getLogger(name="plugins.appdynamics"))
+    logger_components.append(logging.getLogger(name="plugins.cloudwatch"))
+    logger_components.append(logging.getLogger(name="plugins.newrelic"))
+
+
+    for l in logger_components:
+        l.setLevel(options.verbose)
+        l.addHandler(ch)
+        if fh:
+            l.addHandler(fh)
+
+
+
     component_logger = logging.getLogger(name="requests.packages.urllib3.connectionpool")
     component_logger.setLevel(logging.WARN)
 
@@ -72,7 +93,12 @@ def main():
         parser.add_option('-d','--dry-run',dest='dryrun', action='store_true',default=False,help="Get metric value but do not send to AppFirst, print results to console")
         parser.add_option('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
         parser.add_option('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+        parser.add_option('-f','--log-to-file', dest='log_to_file', help="Store output log to file")
         parser.add_option('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+
+        parser.add_option('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
+        parser.add_option('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="application ID to get metrics from New Relic")
+
         # parser.add_option('-h','--help', dest='help', action='help')
         no_args_flag = True if len(sys.argv[1:]) == 0 else False
         
@@ -132,6 +158,23 @@ def main():
                                 unit=options.unit,
                                 offset=options.offset)
 
+        elif options.plugin.lower() == "newrelic":
+
+            if (not options.nrelic_key) and (not options.nrelic_app_id):
+                parser.error("You must provide New Relic API key and application ID")
+
+            if (not options.metricpath):
+                parser.error("You must provide metric path")
+
+            if not options.appname:
+                parser.error("You must provide an Application Name")
+
+
+            plugin = NewRelic(key=options.nrelic_key,
+                            app_id=options.nrelic_app_id,
+                            metricpath=options.metricpath
+                        )
+
         else:
             parser.print_help()
             exit()
@@ -150,11 +193,15 @@ def main():
         # Need to add connection checking here, pulling data on a failed
         #  connection will generate a critical - response code and friendlier
         #  output is expected
+        LOGGER.debug("plugin poll done")
         data = plugin.metric_data
-        for (statsd_key,value) in data.get('metrics',{}).iteritems():
-            LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
-            if not options.dryrun:
-                Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
+        if data is None:
+            raise Exception("No metric data recived from plugin")
+        else:
+            for (statsd_key,value) in data.get('metrics',{}).iteritems():
+                LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
+                if not options.dryrun:
+                    Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
