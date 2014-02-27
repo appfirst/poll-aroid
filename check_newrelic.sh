@@ -20,13 +20,16 @@ appName=""
 ## From "Applications > Metric Names copy metric name"
 ## https://rpm.newrelic.com/api/explore/applications/names
 ## for example "Agent/MetricsReported/count"
+## or separated by comma Apdex, Agent/MetricsReported/count
+## or get just one value from metric Agent/MetricsReported/count%min_response_time
+## or Apdex%count, Apdex%score, Agent/MetricsReported/count%min_response_time
 metricPath=""
 
 
 ## any additional program execution flags, IE --test or --dry-run (or both)
 flags="--test --dry-run"
 
-python $AfPath/AfPoller.py --plugin=newrelic -V --newrelic-access-key-id=$accessKey --newrelic-access-app-id=$accessAppId -m $metricPath -a $appName
+python $AfPath/AfPoller.py --plugin=newrelic -V --newrelic-access-key-id=$accessKey --newrelic-access-app-id=$accessAppId -m "$metricPath" -a $appName
 
 ## Output basic nagios-format "OK" so the polled data script knows this executed
 echo "$0 OK"

@@ -61,6 +61,32 @@ class Plugin(object):
         with open(self.pref_file_name, 'w') as outfile:
             json.dump(self.pref, outfile)
 
+    def append_value_to_metrics(self, metrics, key, val):
+        try:
+            print(' append_value_to_metrics  ', metrics, key, val)
+            if not key in metrics.keys():
+                    metrics[key] = []
+            if val:
+                metrics[key].append( val )
+
+        except Exception as e:
+            LOGGER.error('Faild to append value to metrics dict: %r', e)
+
+    def parse_metricpath(self, metricpath):
+        metrics = {}
+        # trim spaces
+        metricpath = metricpath.replace(' ', '')
+        ms = metricpath.split(',')
+
+        for v in ms:
+            if (v.find('%') > 0):
+                val = v.split('%')
+                self.append_value_to_metrics(metrics, val[0], val[1])
+            else:
+                self.append_value_to_metrics(metrics, v, None)
+
+        return metrics
+
 
 
 class AmazonAPIPlugin(Plugin):
@@ -195,7 +221,7 @@ class JSONStatsPlugin(RESTAPIPlugin):
         """
         if self.no_network:
             return self.data
-        
+
         data = RESTAPIPlugin.get_data(self)
         try:
             LOGGER.debug("RAW APPDYNAMICS RESULT\n%s" % data.text)
@@ -218,28 +244,31 @@ class RESTAPINotAuthPlugin(Plugin):
 
     """
 
-    def __init__(self, key, app_id, metricpath, data=None):
+    def __init__(self, key, app_id, metricpath, last_run_data=None):
         super(RESTAPINotAuthPlugin, self).__init__()
         self.key = key
         self.app_id = app_id
         self.metricpath = metricpath
+        self.metrics = self.parse_metricpath(metricpath)
         self.url = self.default_url(app_id);
+        self.last_run_data = last_run_data
 
 
-    def get_data(self):
+    def get_data(self, metric, value, saveLastSync = 0):
         """
         Get a response from a url with a key in header
         """
 
         last_sync = self.last_sync()
-        payload = {'names': self.metricpath}
+        payload = {'names': metric}
         headers = {'X-Api-Key': self.key}
 
         if last_sync:
             LOGGER.debug('last sync found ' + last_sync)
             payload['from'] = last_sync
 
-        # @TODO "2014-01-16T13:27:00+00:00",
+        if value:
+            payload['values'] = value
 
         LOGGER.debug('metricpath ' + self.metricpath)
         try:
@@ -248,7 +277,8 @@ class RESTAPINotAuthPlugin(Plugin):
             if (response.status_code != 200):
                 raise Exception(u"response code: %s from url %s" % (response.status_code, response.url))
 
-            self.last_sync(update=1)
+            if saveLastSync:
+                self.last_sync(update=1)
 
         except Exception as e:
             raise e
@@ -258,9 +288,17 @@ class RESTAPINotAuthPlugin(Plugin):
 
     def poll(self):
         """Poll data source to get metrics"""
-        data = self.get_data()
-        if data:
-            LOGGER.debug('adding metric')
-            self.add_metrics(data)
+
+        i = len(self.metrics)
+        for n, v in self.metrics.items():
+
+            if --i <= 0 :
+                data = self.get_data(n, v, saveLastSync = 1)
+            else:
+                data = self.get_data(n, v)
+
+            if data:
+                LOGGER.debug('adding metric')
+                self.add_metrics(data)
 
 

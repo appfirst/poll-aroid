@@ -60,6 +60,10 @@ New Relic
  `--newrelic-access-key-id <key>` - API key provided by New Relic https://rpm.newrelic.com/accounts/*acc-id*/integrations?page=data_sharing
  `--newrelic-access-app-id <app_id>` - application ID to get metrics from https://rpm.newrelic.com/api/explore/applications/list
  `-a <application>` - Application to define on AppFirst's portal
+ `-m` - metric path for example "Agent/MetricsReported/count" or 
+  Apdex%count, Apdex%score, Agent/MetricsReported/count%min_response_time
+  where text started from % is a reqierd value from metric,
+  if value not set script will poll all values of the metric
 
 
 

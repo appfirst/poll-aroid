@@ -6,7 +6,6 @@ NewRelic
 '''
 import logging
 import time
-
 from time import gmtime, strftime
 from datetime import datetime
 from base_plugin import RESTAPINotAuthPlugin, Plugin
@@ -25,7 +24,7 @@ class NewRelic(RESTAPINotAuthPlugin):
 
         pref = self.get_pref()
 
-    
+
     @staticmethod
     def default_url(app_id):
 
@@ -46,10 +45,10 @@ class NewRelic(RESTAPINotAuthPlugin):
                 offset = '+' + '%02d' % offset
             else:
                 offset = '-' + '%02d' % offset
-            # @TODO 
+            # @TODO
             # current_time = strftime('%Y-%m-%dT%H:%M:%S+00:00', gmtime())
             current_time = strftime('%Y-%m-%dT%H:%M:%S', gmtime())
-            # current_time = current_time.replace('+00', offset) 
+            # current_time = current_time.replace('+00', offset)
             LOGGER.debug(' last sync time updated to: ' + current_time)
 
 
