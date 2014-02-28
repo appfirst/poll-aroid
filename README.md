@@ -3,7 +3,7 @@ AppFirst's Poll-aroid
 
 A module for pulling snapshots of data from RESTful services into the AF Data stream
 
-This module is designed to allow a simpler configuration for service consumption by enabling the build of plugins and configuration files for various RESTful services. The initial release of this module supports AWS Cloudwatch and AppDynamics. 
+This module is designed to allow a simpler configuration for service consumption by enabling the build of plugins and configuration files for various RESTful services. The initial release of this module supports AWS Cloudwatch and AppDynamics.
 
 Properly configured, this script will run with the periodicity as set in the Administration panel (or you can utilize crontab), and will provide these metrics to StatsD widgets across the product.
 
@@ -28,10 +28,10 @@ From the metric browser, using 'Copy Full Path':
  `-m <metric path>` - from the metric browser (ie, "Business Transaction Performance|Business Transactions|<instance>|/my.aspx/results|Calls per Minute)
  `-a <application>` - Application to define on AppFirst's portal
 
-You can use the wildcard character (*) to get multiple levels of Metrics from AppDynamics. 
+You can use the wildcard character (*) to get multiple levels of Metrics from AppDynamics.
 
 You can also use 'Copy REST URL' to collect metrics that way:
- `--url <REST URL>` 
+ `--url <REST URL>`
  Ensure the last parameter is &output=JSON for proper parsing
 
 
@@ -43,9 +43,9 @@ AWS CloudWatch
  `--amazon-access-key-id=<ID>`
  `--amazon-access-secret-key=<SECRET>`
  `--metricname=`  - i.e., VolumeWriteBytes
- `--namespace=`   - i.e., AWS/Billing, AWS/EBS 
+ `--namespace=`   - i.e., AWS/Billing, AWS/EBS
  `--dimension=`   - i.e., VolumeId:vol-e259792bd
- `--application=` - What name you want prepended in statsd 
+ `--application=` - What name you want prepended in statsd
  `--region=`      - Where are these metrics on AWS (US-WEST, US-WEST-2)
  `--unit=`	  - Bytes, USD, etc
 
@@ -60,10 +60,12 @@ New Relic
  `--newrelic-access-key-id <key>` - API key provided by New Relic https://rpm.newrelic.com/accounts/*acc-id*/integrations?page=data_sharing
  `--newrelic-access-app-id <app_id>` - application ID to get metrics from https://rpm.newrelic.com/api/explore/applications/list
  `-a <application>` - Application to define on AppFirst's portal
- `-m` - metric path for example "Agent/MetricsReported/count" or 
+ `-m` - metric path for example "Agent/MetricsReported/count" or
   Apdex%count, Apdex%score, Agent/MetricsReported/count%min_response_time
   where text started from % is a reqierd value from metric,
   if value not set script will poll all values of the metric
+  or you can use custom application name for some metric
+  [CustomAppName]Apdex%count
 
 
 
