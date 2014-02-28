@@ -34,6 +34,7 @@ class Plugin(object):
 
     def __init__(self):
         self.current_data = None
+        self.ignoreCommonAppName = 0
         self.metric_data = None
         self.pref_file_name = os.path.dirname(os.path.realpath(__file__)) + '/pref.json'
         self.pref = {}
@@ -61,16 +62,17 @@ class Plugin(object):
         with open(self.pref_file_name, 'w') as outfile:
             json.dump(self.pref, outfile)
 
-    def append_value_to_metrics(self, metrics, key, val):
+
+    def append_value_to_metrics(self, metrics, key, val, appName):
         try:
-            print(' append_value_to_metrics  ', metrics, key, val)
             if not key in metrics.keys():
-                    metrics[key] = []
+                metrics[key] = {'appName': appName, 'value': []}
             if val:
-                metrics[key].append( val )
+                metrics[key]['value'].append( val )
 
         except Exception as e:
             LOGGER.error('Faild to append value to metrics dict: %r', e)
+
 
     def parse_metricpath(self, metricpath):
         metrics = {}
@@ -78,12 +80,25 @@ class Plugin(object):
         metricpath = metricpath.replace(' ', '')
         ms = metricpath.split(',')
 
-        for v in ms:
-            if (v.find('%') > 0):
-                val = v.split('%')
-                self.append_value_to_metrics(metrics, val[0], val[1])
+
+
+        for path in ms:
+            m = re.search("\[\S*\D*\]", path)
+            if m:
+                appName = m.group()
+                appName = appName.replace('[', '').replace(']', '')
+                self.ignoreCommonAppName = 1
+                LOGGER.debug(' -- custom application name found: %s', appName)
+            else :
+                appName = ''
+
+            path = re.sub("\[\S*\D*\]", '', path)
+
+            if (path.find('%') > 0):
+                val = path.split('%')
+                self.append_value_to_metrics(metrics, val[0], val[1], appName)
             else:
-                self.append_value_to_metrics(metrics, v, None)
+                self.append_value_to_metrics(metrics, path, None, appName)
 
         return metrics
 
@@ -100,6 +115,7 @@ class AmazonAPIPlugin(Plugin):
                  data=None,last_run_data=None):
         super(AmazonAPIPlugin, self).__init__()
         self.appname = appname
+        self.ignoreCommonAppName = 0
         self.key_id = key_id
         self.secret_key = secret_key
         self.hostname = hostname
@@ -244,9 +260,10 @@ class RESTAPINotAuthPlugin(Plugin):
 
     """
 
-    def __init__(self, key, app_id, metricpath, last_run_data=None):
+    def __init__(self, key, app_id, metricpath, appname, last_run_data=None):
         super(RESTAPINotAuthPlugin, self).__init__()
         self.key = key
+        self.appname = appname
         self.app_id = app_id
         self.metricpath = metricpath
         self.metrics = self.parse_metricpath(metricpath)
@@ -268,9 +285,9 @@ class RESTAPINotAuthPlugin(Plugin):
             payload['from'] = last_sync
 
         if value:
-            payload['values'] = value
+            payload['values[]'] = value
 
-        LOGGER.debug('metricpath ' + self.metricpath)
+        LOGGER.debug('*** get data  for metricpath ' + metric)
         try:
             response = requests.get(self.url, params=payload, headers=headers)
             LOGGER.debug('sending headers ' + response.url)
@@ -290,15 +307,15 @@ class RESTAPINotAuthPlugin(Plugin):
         """Poll data source to get metrics"""
 
         i = len(self.metrics)
-        for n, v in self.metrics.items():
+        for metric, val in self.metrics.items():
 
             if --i <= 0 :
-                data = self.get_data(n, v, saveLastSync = 1)
+                data = self.get_data(metric, val['value'], saveLastSync = 1)
             else:
-                data = self.get_data(n, v)
+                data = self.get_data(metric, val['value'])
 
             if data:
-                LOGGER.debug('adding metric')
-                self.add_metrics(data)
+                LOGGER.info('adding metric...')
+                self.add_metrics(data, metric, val['appName'])
 
 

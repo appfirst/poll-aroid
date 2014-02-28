@@ -19,8 +19,8 @@ class NewRelic(RESTAPINotAuthPlugin):
     replace '/' with '.' for
     '''
 
-    def __init__(self, key, app_id, metricpath):
-        super(NewRelic, self).__init__(key, app_id, metricpath)
+    def __init__(self, key, app_id, metricpath, appname):
+        super(NewRelic, self).__init__(key, app_id, metricpath, appname)
 
         pref = self.get_pref()
 
@@ -61,33 +61,44 @@ class NewRelic(RESTAPINotAuthPlugin):
                 return None
 
 
-    def add_metrics(self, data):
+    def add_metrics(self, data, metricName, appName):
 
-        statsd_data = []
+        statsdData = {}
 
         if (data['metric_data'] and data['metric_data']['metrics']):
+
             LOGGER.debug (u'metrics from date %s' %data['metric_data']['from'])
             for chunk in data['metric_data']['metrics']:
-                LOGGER.debug(u'metrics found for %s' %chunk['name'])
+                mName = chunk['name']
+                LOGGER.debug(u'metrics found for %s' %mName)
                 if (chunk['timeslices']):
                     for metric in chunk['timeslices']:
-                        LOGGER.debug(metric['values'])
-                        statsd_data.append(metric['values'])
+                        if not mName in statsdData.keys():
+                            statsdData[mName] = []
+                        statsdData[mName].append(metric['values'])
 
         else:
             raise Exception('no metrics found in response')
 
         if self.metric_data:
             LOGGER.debug(u' previous metric found %s' % (data['metric_data']['from']))
+            self.pref['last_metric_found'] = 1;
+        else:
+            self.metric_data = {'metrics' : {}}
 
-        self.metric_data = {'metrics' : {}}
+        if len(statsdData) > 0:
+            for metric, values in statsdData.items():
+                last_metric = values[-1]
+                mName = metric.replace('/', '_')
+                for n, v in last_metric.items():
+                    if len(appName) > 0:
+                        fName = appName + '.' + mName + '.' + n
+                    else:
+                        fName = self.appname + '.' + mName + '.' + n
+                    LOGGER.debug(u' ---- add metric %s' % fName)
+                    LOGGER.debug(u' ---- add value  %s' % (v))
+                    self.metric_data['metrics'][fName] = v
 
-        if len(statsd_data) > 0:
-            last_metric = statsd_data[-1]
-            mname = self.metricpath.replace('/', '.')
-            for n, v in last_metric.items():
-                n = n.replace('_', '.')
-                self.metric_data['metrics'][n] = v
-    
+
 
 

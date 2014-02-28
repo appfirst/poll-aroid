@@ -104,7 +104,7 @@ def setup_logger(options):
 
     ch = logging.StreamHandler()
     fh = None
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
     ch.setFormatter(formatter)
 
     if options.verbose and options.log_to_file:
@@ -147,9 +147,7 @@ def get_region_url(region) :
 def main():
     try:
 
-        # argparse
-        #usage = "%prog - AppFirst Poller for AppDynamics"
-        # parser = OptionParser(usage=usage, epilog="use -h/--help to see full help")
+
         parser = argparse.ArgumentParser( epilog="use -h/--help to see full help", conflict_handler="resolve")
         options = get_options(parser)
         setup_logger(options)
@@ -163,11 +161,9 @@ def main():
                 config.read(options.config)
 
                 argumentsFromFile = config.items("common")
-                print type(argumentsFromFile), config.items("common"), config.items("newrelic")
 
                 argumentsFromFile = parse_cfg(config, ["common", "newrelic", "appdynamics", "cloudwatch"])
                 arguments = parse_arguments(argumentsFromFile)
-                print argumentsFromFile
 
                 options = get_options(parser, config = arguments)
             else:
@@ -232,9 +228,11 @@ def main():
                 parser.error("You must provide an Application Name")
 
 
-            plugin = NewRelic(key=options.nrelic_key,
+            plugin = NewRelic(
+                            key=options.nrelic_key,
                             app_id=options.nrelic_app_id,
-                            metricpath=options.metricpath
+                            metricpath=options.metricpath,
+                            appname = options.appname
                         )
 
         else:
@@ -260,15 +258,19 @@ def main():
         if data is None:
             raise Exception("No metric data recived from plugin")
         else:
-            for (statsd_key,value) in data.get('metrics',{}).iteritems():
-                LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
+            for (statsd_key, value) in data.get('metrics',{}).iteritems():
+
                 if not options.dryrun:
-                    Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
+                    if plugin.ignoreCommonAppName:
+                        LOGGER.info(" *** polling metrics %s %s" % (statsd_key, value))
+                        Statsd.gauge(str("%s" % (statsd_key)),value)
+                    else:
+                        LOGGER.info(" *** polling metrics %s.%s %s" % (options.appname, statsd_key, value))
+                        Statsd.gauge(str("%s.%s" % (options.appname, statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     main()
         
