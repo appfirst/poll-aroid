@@ -8,7 +8,7 @@ export PATH
 AfPath=/usr/share/appfirst/plugins/libexec/af_newrelic/poll-aroid/AfPoller
 
 ## path to configuration file in yaml format
-configPath=$AfPath/config.cfg
+configPath=$AfPath/config.ini
 echo $configPath
 
 python $AfPath/AfPoller.py --config=$configPath -V
