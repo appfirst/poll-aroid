@@ -13,7 +13,6 @@ import base64,hashlib,hmac,datetime
 import xml.etree.ElementTree as Xml_Tree
 import re
 
-# from urllib2 import build_opener, install_opener,urlopen,HTTPPasswordMgrWithDefaultRealm,HTTPBasicAuthHandler
 from urlparse import urlparse
 
 LOGGER = logging.getLogger(__name__)

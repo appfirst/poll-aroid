@@ -93,7 +93,10 @@ def parse_arguments(list):
     if list:
         args = []
         for (key, val) in list:
-            args.append('--' + key)
+            if (key.find('--') == 0):
+                args.append(key)
+            else:
+                args.append('--' + key)
             args.append(val)
 
     return args
@@ -124,8 +127,6 @@ def setup_logger(options):
         l.addHandler(ch)
         if fh:
             l.addHandler(fh)
-
-
 
     component_logger = logging.getLogger(name="requests.packages.urllib3.connectionpool")
     component_logger.setLevel(logging.WARN)
