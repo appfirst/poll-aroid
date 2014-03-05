@@ -14,6 +14,9 @@ Properly configured, this script will run with the periodicity as set in the Adm
 
 * `python AfPoller.py -h` will detail configuration flags
 
+*Walkthrough*
+* AppDynamics Integration - http://support.appfirst.com/docs/partner-integrations/#appdynamics
+* New Relic API v2 Integration - http://support.appfirst.com/new-relic-beta/
 
 AppDynamics
 -----------
@@ -59,23 +62,28 @@ New Relic
 ## New Relic Options
  `--newrelic-access-key-id <key>` - API key provided by New Relic https://rpm.newrelic.com/accounts/*acc-id*/integrations?page=data_sharing
  `--newrelic-access-app-id <app_id>` - application ID to get metrics from https://rpm.newrelic.com/api/explore/applications/list
- `-a <application>` - Application to define on AppFirst's portal
+ `-a <application>` - Application name as you want it to appear in the StatsD bucket
  `-m` - metric path for example "Agent/MetricsReported/count" or
   Apdex%count, Apdex%score, Agent/MetricsReported/count%min_response_time
-  where text started from % is a reqierd value from metric,
-  if value not set script will poll all values of the metric.
+  
+  Using % allows you to specify single metrics instead of the entire response tree
   
   Also it is possible to specify custom application name for each
-  metric path, for example:
+  metric, for example:
    *[CustomAppName]Apdex%count, Agent/MetricsReported/count%min_response_time*
-   - where string between square brackets is a custom application name wich will be pre appended in statsD.
+   - where string between square brackets is a custom application name which will be appended in the StatsD bucket.
 
 
 Configuration file
 -----------
+[Experimental]
+This feature is likely to change. 
 `python AfPoller.py --config=/path/to/configuration/file`
-Please see config.cfg in INI format witch you can use to specify
-metrics and parametrs for module. 
+The INI style configuration file is designed for specifying metrics and parameters.
+The goal is to provide one location for all metrics collected as well as periodicity
+
+See AfPoller/config.cfg for examples
+
 ```
 [common]
 # define wich plugin will be used
