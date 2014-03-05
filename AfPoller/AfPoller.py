@@ -22,31 +22,31 @@ LOGGER = logging.getLogger(__name__)
 
 def get_options(parser, config = None):
 
-    parser.add_argument('-P','--plugin', dest='plugin', required=False, help="[REQUIRED] Name of plug in appdynamics or cloudwatch")
+    parser.add_argument('-P','--plugin', dest='plugin', required=False, help="[REQUIRED] Name of plug-in (appdynamics,cloudwatch,newrelic)")
     parser.add_argument('-C','--config', dest='config', help="Path to configuration file")
     parser.add_argument('-u','--username', dest='username', help="AppDynamics username (usually name@domain format)")
     parser.add_argument('-p','--password', dest='password', help="AppDynamics password")
-    parser.add_argument('-a','--application', dest='appname', help="Name of your AppDynamics Application")
-    parser.add_argument('-H','--hostname', dest='hostname', help="Host name (including port) of your AppFirst Controller")
+    parser.add_argument('-a','--application', dest='appname', help="AppDynamics Application Name")
+    parser.add_argument('-H','--hostname', dest='hostname', help="AppDynamics Host name (including port) of your Controller")
     parser.add_argument('-m','--metricpath', dest='metricpath', help="AppDynamics path (with \| separators) to the metric to poll.  You may use wildcards '*'")
     parser.add_argument('-r','--region', dest='region', help="Amazon AWS region - like us-west-1 or us-east-2")
     parser.add_argument('-i','--amazon-access-key-id', dest='amazon_key_id', help="Amazon key identifier")
     parser.add_argument('-k','--amazon-access-secret-key', dest='amazon_secret_key', help="Amazon secret access key")
-    parser.add_argument('-M','--metricname', dest='metric_name', help="Name of CloudWatch metric")
-    parser.add_argument('-c','--namespace', dest='namespace', help="Namespace of CloudWatch metric eg. AWS/EBS, AWS/EC2")
-    parser.add_argument('-n','--dimension', dest='dimension', help="Name of CloudWatch dimension & value eg. InstanceId:i-9999999 you may have any number", type=str, action="append")
-    parser.add_argument('-s','--statistic', dest='statistic', help="Name of CloudWatch dimension's Average, Sum, Mininum, Maximum - default Average", default="Average")
-    parser.add_argument('-t','--unit', dest='unit', default=None, help="Name of CloudWatch dimension unit eg Seconds, Bytes, Bytes/Second")
-    parser.add_argument('-o','--offset', dest='offset', help="time offset for CloudWatch in minutes",default=60,type=int)
-    parser.add_argument('-U','--url', dest='url', help="full AppDynamics url to the metric as copied from AppDynamics metric browser.  You may use wildcards '*'")
+    parser.add_argument('-M','--metricname', dest='metric_name', help="Amazon CloudWatch metric name")
+    parser.add_argument('-c','--namespace', dest='namespace', help="Amazon CloudWatch metric namespace (eg. AWS/EBS, AWS/EC2)")
+    parser.add_argument('-n','--dimension', dest='dimension', help="Amazon CloudWatch dimension name & value eg. InstanceId:i-9999999", type=str, action="append")
+    parser.add_argument('-s','--statistic', dest='statistic', help="Amazon CloudWatch dimension desired Average, Sum, Mininum, Maximum (default: Average)", default="Average")
+    parser.add_argument('-t','--unit', dest='unit', default=None, help="Amazon CloudWatch dimension unit (eg. Seconds, Bytes, Bytes/Second)")
+    parser.add_argument('-o','--offset', dest='offset', help="Amazon CloudWatch time offset in minutes (default: 60)",default=60,type=int)
+    parser.add_argument('-U','--url', dest='url', help="AppDynamics URL to the metric (as copied from AppDynamics metric browser. You may use wildcards '*')")
     parser.add_argument('-d','--dry-run',dest='dryrun', action='store_true',default=False,help="Get metric value but do not send to AppFirst, print results to console")
     parser.add_argument('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
     parser.add_argument('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
     parser.add_argument('-f','--log-to-file', dest='log_to_file', help="Store output log to file")
     parser.add_argument('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
 
-    parser.add_argument('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
-    parser.add_argument('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="application ID to get metrics from New Relic")
+    parser.add_argument('-K','--newrelic-access-key-id', dest='nrelic_key', help="New Relic API key")
+    parser.add_argument('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="New Relic Application ID")
 
     no_args_flag = True if len(sys.argv[1:]) == 0 else False
 
@@ -174,7 +174,7 @@ def main():
 
 
         if options.plugin is None:
-            parser.error("You must provide plugin name")
+            parser.error("You must provide plug-in name")
 
         if options.plugin.lower() == "appdynamics":
             if not (options.url or (options.hostname and options.metricpath)):
@@ -257,7 +257,7 @@ def main():
         LOGGER.debug("plugin poll done")
         data = plugin.metric_data
         if data is None:
-            raise Exception("No metric data recived from plugin")
+            raise Exception("No metric data recived from plug-in")
         else:
             for (statsd_key, value) in data.get('metrics',{}).iteritems():
 

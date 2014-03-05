@@ -70,7 +70,7 @@ class Plugin(object):
                 metrics[key]['value'].append( val )
 
         except Exception as e:
-            LOGGER.error('Faild to append value to metrics dict: %r', e)
+            LOGGER.error('Failed to append value to metrics dict: %r', e)
 
 
     def parse_metricpath(self, metricpath):
