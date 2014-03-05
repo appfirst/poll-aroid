@@ -11,13 +11,62 @@ import sys
 import json
 import logging
 import os
+import ConfigParser
+import argparse
 from codecs import open
-from optparse import OptionParser
 from plugins.appdynamics import AppDynamics
 from plugins.cloudwatch import CloudWatch
 from plugins.newrelic import NewRelic
 
 LOGGER = logging.getLogger(__name__)
+
+def get_options(parser, config = None):
+
+    parser.add_argument('-P','--plugin', dest='plugin', required=False, help="[REQUIRED] Name of plug in appdynamics or cloudwatch")
+    parser.add_argument('-C','--config', dest='config', help="Path to configuration file")
+    parser.add_argument('-u','--username', dest='username', help="AppDynamics username (usually name@domain format)")
+    parser.add_argument('-p','--password', dest='password', help="AppDynamics password")
+    parser.add_argument('-a','--application', dest='appname', help="Name of your AppDynamics Application")
+    parser.add_argument('-H','--hostname', dest='hostname', help="Host name (including port) of your AppFirst Controller")
+    parser.add_argument('-m','--metricpath', dest='metricpath', help="AppDynamics path (with \| separators) to the metric to poll.  You may use wildcards '*'")
+    parser.add_argument('-r','--region', dest='region', help="Amazon AWS region - like us-west-1 or us-east-2")
+    parser.add_argument('-i','--amazon-access-key-id', dest='amazon_key_id', help="Amazon key identifier")
+    parser.add_argument('-k','--amazon-access-secret-key', dest='amazon_secret_key', help="Amazon secret access key")
+    parser.add_argument('-M','--metricname', dest='metric_name', help="Name of CloudWatch metric")
+    parser.add_argument('-c','--namespace', dest='namespace', help="Namespace of CloudWatch metric eg. AWS/EBS, AWS/EC2")
+    parser.add_argument('-n','--dimension', dest='dimension', help="Name of CloudWatch dimension & value eg. InstanceId:i-9999999 you may have any number", type=str, action="append")
+    parser.add_argument('-s','--statistic', dest='statistic', help="Name of CloudWatch dimension's Average, Sum, Mininum, Maximum - default Average", default="Average")
+    parser.add_argument('-t','--unit', dest='unit', default=None, help="Name of CloudWatch dimension unit eg Seconds, Bytes, Bytes/Second")
+    parser.add_argument('-o','--offset', dest='offset', help="time offset for CloudWatch in minutes",default=60,type=int)
+    parser.add_argument('-U','--url', dest='url', help="full AppDynamics url to the metric as copied from AppDynamics metric browser.  You may use wildcards '*'")
+    parser.add_argument('-d','--dry-run',dest='dryrun', action='store_true',default=False,help="Get metric value but do not send to AppFirst, print results to console")
+    parser.add_argument('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
+    parser.add_argument('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+    parser.add_argument('-f','--log-to-file', dest='log_to_file', help="Store output log to file")
+    parser.add_argument('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
+
+    parser.add_argument('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
+    parser.add_argument('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="application ID to get metrics from New Relic")
+
+    no_args_flag = True if len(sys.argv[1:]) == 0 else False
+
+    if config is None:
+        options = parser.parse_args()
+    else:
+        options = parser.parse_args(config)
+
+    level = {
+        1: logging.ERROR,
+        2: logging.WARNING,
+        3: logging.INFO,
+        4: logging.DEBUG
+    }.get(options.verbose, logging.ERROR)
+    options.verbose = level
+    if no_args_flag:
+        parser.print_help()
+        exit()
+
+    return options
 
 
 def get_json_from_file(file_name):
@@ -26,11 +75,39 @@ def get_json_from_file(file_name):
     return json.loads(data, "utf-8")
 
 
+def parse_cfg(config, sections):
+    args = []
+    if sections:
+        for (section) in sections:
+            try:
+                items = config.items(section)
+                for item in items:
+                    args.append(item)
+            except Exception as e:
+                LOGGER.info('Section: %s not found in configuration file', section)
+    return args
+
+
+def parse_arguments(list):
+
+    if list:
+        args = []
+        for (key, val) in list:
+            if (key.find('--') == 0):
+                args.append(key)
+            else:
+                args.append('--' + key)
+            args.append(val)
+
+    return args
+
+
+
 def setup_logger(options):
 
     ch = logging.StreamHandler()
     fh = None
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
     ch.setFormatter(formatter)
 
     if options.verbose and options.log_to_file:
@@ -51,8 +128,6 @@ def setup_logger(options):
         if fh:
             l.addHandler(fh)
 
-
-
     component_logger = logging.getLogger(name="requests.packages.urllib3.connectionpool")
     component_logger.setLevel(logging.WARN)
 
@@ -72,50 +147,34 @@ def get_region_url(region) :
 
 def main():
     try:
-        usage = "%prog - AppFirst Poller for AppDynamics"
-        parser = OptionParser(usage=usage, epilog="use -h/--help to see full help")
-        parser.add_option('-P','--plugin', dest='plugin', help="[REQUIRED] Name of plug in appdynamics or cloudwatch")
-        parser.add_option('-u','--username', dest='username', help="AppDynamics username (usually name@domain format)")
-        parser.add_option('-p','--password', dest='password', help="AppDynamics password")
-        parser.add_option('-a','--application', dest='appname', help="Name of your AppDynamics Application")
-        parser.add_option('-H','--hostname', dest='hostname', help="Host name (including port) of your AppFirst Controller")
-        parser.add_option('-m','--metricpath', dest='metricpath', help="AppDynamics path (with \| separators) to the metric to poll.  You may use wildcards '*'")
-        parser.add_option('-r','--region', dest='region', help="Amazon AWS region - like us-west-1 or us-east-2")
-        parser.add_option('-i','--amazon-access-key-id', dest='amazon_key_id', help="Amazon key identifier")
-        parser.add_option('-k','--amazon-access-secret-key', dest='amazon_secret_key', help="Amazon secret access key")
-        parser.add_option('-M','--metricname', dest='metric_name', help="Name of CloudWatch metric")
-        parser.add_option('-c','--namespace', dest='namespace', help="Namespace of CloudWatch metric eg. AWS/EBS, AWS/EC2")
-        parser.add_option('-n','--dimension', dest='dimension', help="Name of CloudWatch dimension & value eg. InstanceId:i-9999999 you may have any number", type=str, action="append")
-        parser.add_option('-s','--statistic', dest='statistic', help="Name of CloudWatch dimension's Average, Sum, Mininum, Maximum - default Average", default="Average")
-        parser.add_option('-t','--unit', dest='unit', default=None, help="Name of CloudWatch dimension unit eg Seconds, Bytes, Bytes/Second")
-        parser.add_option('-o','--offset', dest='offset', help="time offset for CloudWatch in minutes",default=60,type=int)
-        parser.add_option('-U','--url', dest='url', help="full AppDynamics url to the metric as copied from AppDynamics metric browser.  You may use wildcards '*'")
-        parser.add_option('-d','--dry-run',dest='dryrun', action='store_true',default=False,help="Get metric value but do not send to AppFirst, print results to console")
-        parser.add_option('-v','--verbose', dest='verbose', action='count',default=2, help="Set log level higher you can add multiple")
-        parser.add_option('-V','--very_verbose', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
-        parser.add_option('-f','--log-to-file', dest='log_to_file', help="Store output log to file")
-        parser.add_option('-e','--test', dest='verbose', action='store_const', const=4, help="Set log level to highest level of detail")
 
-        parser.add_option('-K','--newrelic-access-key-id', dest='nrelic_key', help="API key provided by New Relic")
-        parser.add_option('-I','--newrelic-access-app-id', dest='nrelic_app_id', help="application ID to get metrics from New Relic")
 
-        # parser.add_option('-h','--help', dest='help', action='help')
-        no_args_flag = True if len(sys.argv[1:]) == 0 else False
-        
-        (options, args) = parser.parse_args()
-        level = {
-            1: logging.ERROR,
-            2: logging.WARNING,
-            3: logging.INFO,
-            4: logging.DEBUG
-        }.get(options.verbose, logging.ERROR)
-        options.verbose = level
-        if no_args_flag:
-            parser.print_help()
-            exit()
-
+        parser = argparse.ArgumentParser( epilog="use -h/--help to see full help", conflict_handler="resolve")
+        options = get_options(parser)
         setup_logger(options)
         plugin = None
+
+        # check if configuration file path is set
+        if options.config is not None:
+            LOGGER.debug("Loading configuration from file %s", options.config)
+            if os.path.isfile(options.config):
+                config = ConfigParser.RawConfigParser()
+                config.read(options.config)
+
+                argumentsFromFile = config.items("common")
+
+                argumentsFromFile = parse_cfg(config, ["common", "newrelic", "appdynamics", "cloudwatch"])
+                arguments = parse_arguments(argumentsFromFile)
+
+                options = get_options(parser, config = arguments)
+            else:
+                parser.error("Configuration file not found")
+
+
+
+
+        if options.plugin is None:
+            parser.error("You must provide plugin name")
 
         if options.plugin.lower() == "appdynamics":
             if not (options.url or (options.hostname and options.metricpath)):
@@ -170,9 +229,11 @@ def main():
                 parser.error("You must provide an Application Name")
 
 
-            plugin = NewRelic(key=options.nrelic_key,
+            plugin = NewRelic(
+                            key=options.nrelic_key,
                             app_id=options.nrelic_app_id,
-                            metricpath=options.metricpath
+                            metricpath=options.metricpath,
+                            appname = options.appname
                         )
 
         else:
@@ -198,15 +259,19 @@ def main():
         if data is None:
             raise Exception("No metric data recived from plugin")
         else:
-            for (statsd_key,value) in data.get('metrics',{}).iteritems():
-                LOGGER.info("%s.%s %s" % (options.appname,statsd_key,value))
+            for (statsd_key, value) in data.get('metrics',{}).iteritems():
+
                 if not options.dryrun:
-                    Statsd.gauge(str("%s.%s" % (options.appname,statsd_key)),value)
+                    if plugin.ignoreCommonAppName:
+                        LOGGER.info(" *** polling metrics %s %s" % (statsd_key, value))
+                        Statsd.gauge(str("%s" % (statsd_key)),value)
+                    else:
+                        LOGGER.info(" *** polling metrics %s.%s %s" % (options.appname, statsd_key, value))
+                        Statsd.gauge(str("%s.%s" % (options.appname, statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
     main()
         
