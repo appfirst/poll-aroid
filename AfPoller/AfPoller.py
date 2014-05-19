@@ -192,6 +192,9 @@ def main():
                                  username=options.username,
                                  password=options.password
                     )
+	    # Set plugin name to Site filterable identifier
+	    options.plugin = "AppDynamics"
+
         elif options.plugin.lower() == "cloudwatch":
             if not options.region:
                 parser.error("You must provide an Amazon Region name like us-east-1 or us-west-2")
@@ -217,6 +220,9 @@ def main():
                                 unit=options.unit,
                                 offset=options.offset)
 
+	    # Set plugin name to Site filterable identifier
+	    options.plugin = "AWSCloudWatch"
+	
         elif options.plugin.lower() == "newrelic":
 
             if (not options.nrelic_key) and (not options.nrelic_app_id):
@@ -235,6 +241,9 @@ def main():
                             metricpath=options.metricpath,
                             appname = options.appname
                         )
+
+	    # Set plugin name to Site filterable identifier
+	    options.plugin = "NewRelic"
 
         else:
             parser.print_help()
@@ -263,11 +272,11 @@ def main():
 
                 if not options.dryrun:
                     if plugin.ignoreCommonAppName:
-                        LOGGER.info(" *** polling metrics %s %s" % (statsd_key, value))
-                        Statsd.gauge(str("%s" % (statsd_key)),value)
+                        LOGGER.info(" *** polling metrics %s.%s %s" % (option.plugin, statsd_key, value))
+                        Statsd.gauge(str("%s.%s" % (options.plugin, statsd_key)),value)
                     else:
-                        LOGGER.info(" *** polling metrics %s.%s %s" % (options.appname, statsd_key, value))
-                        Statsd.gauge(str("%s.%s" % (options.appname, statsd_key)),value)
+                        LOGGER.info(" *** polling metrics %s.%s.%s %s" % (options.plugin, options.appname, statsd_key, value))
+                        Statsd.gauge(str("%s.%s.%s" % (options.plugin, options.appname, statsd_key)),value)
 
     except Exception as e:
         LOGGER.critical('Serious Error occured: %s', e)
